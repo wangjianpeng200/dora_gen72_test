@@ -33,8 +33,8 @@ nodes:
     outputs:
       - text
     env:
-      # TARGET_LANGUAGE: english
-      TARGET_LANGUAGE: Chinese
+      TARGET_LANGUAGE: english
+      # TARGET_LANGUAGE: Chinese
       TRANSLATE: true
 
   - id: dora-gen72-arm 
@@ -128,6 +128,6 @@ nodes:
       - action_l_arm
       - prompt
     env:
-      # ACTIVATION_WORDS: grab pick give output take catch grabs picks gives output takes catches have put
-      ACTIVATION_WORDS: 把 拿 放 给 抓  
+      ACTIVATION_WORDS: grab pick give output take catch grabs picks gives output takes catches have put
+      # ACTIVATION_WORDS: 把 拿 放 给 抓  
 

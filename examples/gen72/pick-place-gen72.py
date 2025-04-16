@@ -15,16 +15,7 @@ node = Node()
 ACTIVATION_WORDS = os.getenv("ACTIVATION_WORDS", "").split()
 TABLE_HEIGHT = float(os.getenv("TABLE_HEIGHT", "0.26"))
 
-# l_init_pose = [
-#     -105.478,
-#     81.933,
-#     85.075,
-#     -100.802,
-#     -10.81,
-#     0.654,
-#     3.414,
-#     100,
-# ] --------立式base
+
 
 l_init_pose = [
     -19.323,
@@ -110,14 +101,14 @@ def handle_speech(last_text):
     words = last_text.lower().split()
     print("语音识别输入：",words)
     # print(ACTIVATION_WORDS)
-    if len(ACTIVATION_WORDS) > 0 and any(word in ACTIVATION_WORDS for word in word_list):
+    if len(ACTIVATION_WORDS) > 0 and any(word in ACTIVATION_WORDS for word in words):
         print("start")
         node.send_output(
             "text_vlm",
             pa.array(
                 [
-                    # f"Given the prompt: {cache['text']}. Output the two bounding boxes for the two objects",
-                    f"Given the prompt: {cache['text']}. 如果物体在视野中，输出两个物体的边界框",
+                    f"Given the prompt: {cache['text']}. Output the two bounding boxes for the two objects",
+                    # f"Given the prompt: {cache['text']}. 如果物体在视野中，输出两个物体的边界框",
                 ],
             ),
             metadata={"image_id": "image_depth"},
