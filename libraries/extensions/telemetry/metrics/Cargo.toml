@@ -1,0 +1,21 @@
+[package]
+name = "dora-metrics"
+version.workspace = true
+edition.workspace = true
+documentation.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+opentelemetry = { version = "0.28.0", features = ["metrics"] }
+opentelemetry-otlp = { version = "0.28.0", features = [
+    "tonic",
+    "metrics",
+    "grpc-tonic",
+] }
+opentelemetry_sdk = { version = "0.28.0", features = ["rt-tokio", "metrics"] }
+eyre = "0.6.12"
+opentelemetry-system-metrics = { version = "0.3.1" }
