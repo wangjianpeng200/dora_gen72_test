@@ -1,4 +1,8 @@
-# dora-gen72-test: 将reachy2的pick-place-dev迁移到了dora机器人上，主要改动如下：
+# dora-gen72-test:
+
+## 改动说明
+将reachy2的pick-place-dev迁移到了dora机器人上，主要改动如下：
+
 1.在```node-hub```中添加```node-hub\dora-gen72```文件夹，该文件夹中包含了dora机器人的机械臂控制代码，以及奥比中光gemin335相机驱动。该文件夹主要用于代替```node-hub\dora-reachy2```
 
 2.在```examples```文件夹中添加```examples\gen72```文件夹，该文件夹包含执行的yml文件。该文件夹主要用于代替```example\dora-reachy2```
