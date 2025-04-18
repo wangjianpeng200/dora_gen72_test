@@ -13,26 +13,6 @@ from Robotic_Arm.rm_robot_interface import *
 RIGHT_ROBOT_IP = os.getenv("ROBOT_IP", "192.168.1.18")
 LEFT_ROBOT_IP = os.getenv("ROBOT_IP", "192.168.1.19")
 
-l_init_pose = [
-    -105.478,
-    81.933,
-    85.075,
-    -100.802,
-    -10.81,
-    0.654,
-    3.414,
-    100,
-]
-r_init_pose = [
-    12.15,
-    36.437,
-    14.391,
-    -95.508,
-    -91.726,
-    -23.781,
-    0,
-    100,
-]
 
 class robot_gen72:
     def __init__(self):
@@ -47,6 +27,7 @@ class robot_gen72:
         self.right_arm.rm_set_modbus_mode(1,115200,2)   
         self.right_write_params = rm_peripheral_read_write_params_t(1, 40000, 1)
         self.right_arm.rm_write_single_register(self.right_write_params,100) 
+        self.right_arm.rm_change_tool_frame("lebai2")
         #---------------------------------left_arm init
         self.left_arm.rm_set_tool_voltage(3) 
         self.left_arm.rm_set_modbus_mode(1,115200,2)
@@ -90,7 +71,7 @@ def main():
                         gen72.right_arm.rm_write_single_register(
                             gen72.right_write_params,
                             int(gripper))
-                        time.sleep(1.0)
+                        time.sleep(0.6)
                         if move_p != 0:
                             node.send_output(  
                                 "response_r_arm",
@@ -111,7 +92,7 @@ def main():
                         gen72.left_arm.rm_write_single_register(
                             gen72.left_write_params,
                             int(gripper))
-                        time.sleep(1.0)
+                        time.sleep(0.6)
                         if move_p != 0:
                             node.send_output(
                                 "response_l_arm",

@@ -3,19 +3,17 @@
 # State Machine
 import json
 import os
+import time
 
 import numpy as np
 import pyarrow as pa
-import time
 from dora import Node
 
 IMAGE_RESIZE_RATIO = float(os.getenv("IMAGE_RESIZE_RATIO", "1.0"))
 node = Node()
 
 ACTIVATION_WORDS = os.getenv("ACTIVATION_WORDS", "").split()
-TABLE_HEIGHT = float(os.getenv("TABLE_HEIGHT", "0.26"))
-
-
+TABLE_HEIGHT = float(os.getenv("TABLE_HEIGHT", "-0.41"))
 
 l_init_pose = [
     -19.323,
@@ -28,6 +26,19 @@ l_init_pose = [
     100,
 ] 
 
+# l_init_pose = [
+#     -19.323,
+#     31.125,
+#     -8.361,
+#     -116.783, 
+#     97.795,
+#     3.08,
+#     -15.141,
+#     100,
+# ] 
+
+
+
 r_init_pose = [
     24.15,
     41.65,
@@ -39,25 +50,40 @@ r_init_pose = [
     100,
 ]
 
+# right_R=np.array([[ 0.03041012, -0.75495311,  0.6550733 ],
+#                [ 0.01426148, -0.65498197, -0.75550991],
+#                [ 0.99943576,  0.03231746, -0.00915133]])
 
-right_R=np.array([[ 0.03041012, -0.75495311,  0.6550733 ],
-               [ 0.01426148, -0.65498197, -0.75550991],
-               [ 0.99943576,  0.03231746, -0.00915133]])
+# right_t= np.array([[ 0.10971697],
+#                [ 0.16180161],
+#                [-0.06287235]])
 
-right_t= np.array([[ 0.10971697],
-               [ 0.16180161],
-               [-0.06287235]])
+right_R=np.array([[ 0.0663028,  -0.80993549,  0.58275933],
+               [ 0.00654148, -0.5836791,  -0.81195807],
+               [ 0.99777811,  0.0576472,  -0.03340138]])
 
-left_R=np.array([[ 0.02062819, -0.78512483,  0.61899392],
-               [-0.04156985,  0.61791672,  0.78514385],
-               [-0.99892263, -0.04192758, -0.01989102]])
+right_t= np.array([[ 0.11050572],
+               [ 0.15650712],
+               [-0.05664732]])
 
-left_t= np.array([[ 0.1370087 ],
-               [-0.16099173],
-               [-0.05669775]])
+
+left_R=np.array([[ 0.01247585, -0.82119797,  0.57050701],
+               [-0.07766833, 0.5680318,   0.81933357],
+               [-0.99690119, -0.05453221, -0.0566944 ]])
+
+left_t= np.array([[ 0.13283284],
+               [-0.165495],
+               [-0.05372739]])
 
 stop = True
 
+
+
+
+def camera_to_base(point_camera,R,t):
+    point_camera = np.array(point_camera).reshape(3,1)
+    point_base = np.dot(R, point_camera) + t
+    return point_base.flatten() 
 
 def extract_bboxes(json_text) -> (np.ndarray, np.ndarray):
     """Extract bounding boxes from a JSON string with markdown markers and return them as a NumPy array.
@@ -97,18 +123,16 @@ def extract_bboxes(json_text) -> (np.ndarray, np.ndarray):
 def handle_speech(last_text):
     """TODO: Add docstring."""
     global stop
-    word_list = list(last_text.lower())
+    word_list=list(last_text.lower())
     words = last_text.lower().split()
-    print("语音识别输入：",words)
-    # print(ACTIVATION_WORDS)
+    print("words: ", words)
     if len(ACTIVATION_WORDS) > 0 and any(word in ACTIVATION_WORDS for word in words):
-        print("start")
+
         node.send_output(
             "text_vlm",
             pa.array(
                 [
                     f"Given the prompt: {cache['text']}. Output the two bounding boxes for the two objects",
-                    # f"Given the prompt: {cache['text']}. 如果物体在视野中，输出两个物体的边界框",
                 ],
             ),
             metadata={"image_id": "image_depth"},
@@ -169,46 +193,75 @@ def get_prompt():
         return None
     text = text[0].as_py()
     words = text.lower().split()
+    print("words: ", words)
+    # Check if any activation word is present in the text
     if len(ACTIVATION_WORDS) > 0 and all(
         word not in ACTIVATION_WORDS for word in words
     ):
         return None
     return text
 
-def camera_to_base(point_camera,R,t):
-    point_camera = np.array(point_camera).reshape(3,1)
-    point_base = np.dot(R, point_camera) + t
-    return point_base.flatten() 
 
 last_text = ""
 cache = {"text": "Put the orange in the metal box"}
 
 while True:
     ### === IDLE ===
+
     node.send_output(
         "action_r_arm",
         pa.array(r_init_pose),
         metadata={"encoding": "jointstate", "duration": 1,"arm":"right"},
     )
-    time.sleep(3)
+    time.sleep(0.5)
     node.send_output(
         "action_l_arm",
         pa.array(l_init_pose),
         metadata={"encoding": "jointstate", "duration": 1,"arm":"left"},
     )
-
     _, cache = wait_for_events(
         ids=["response_r_arm", "response_l_arm"], timeout=3, cache=cache,
     )
+    # handle_speech(cache["text"])
 
+    ### === TURNING ===
+
+    # Trigger action once text from whisper is received
+    # Move left. Overwrite this with your desired movement..
+    # node.send_output("action_base", pa.array([0.0, 0.0, 0.0, 0.0, 0.0, 1.57]))
+    # Look straight
+    # node.send_output("look", pa.array([0.3, 0, -0.1]))
+    # You can add additional actions here
+    # ...
+
+    # event = wait_for_event(id="response_base")[0].as_py()
+    # if not event:
+    ## return to IDLE
+    # node.send_output("action_base", pa.array([0.0, 0.0, 0.0, 0.0, 0.0, -1.57]))
+    # event = wait_for_event(id="response_base")[0].as_py()
+    # if event:
+    # continue
+    # else:
+    # break
+
+    ### === GRABBING ===
+
+    # Trigger action once base is done moving
+    # node.send_output(
+    # "text_vlm",
+    # pa.array([f"Given the prompt: {text}. Output bounding box for this action"]),
+    # metadata={"image_id": "image_depth"},
+    # )
     arm_holding_object = None
     # Try pose and until one is successful
     text, cache = wait_for_event(id="text", timeout=0.3, cache=cache)
+
     if stop:
         continue
 
     while True:
         values, cache = wait_for_event(id="pose", cache=cache)
+
         if values is None:
             continue
         values = values.to_numpy().reshape((-1, 6))
@@ -221,90 +274,95 @@ while True:
         dest_y = values[1][1]
         dest_z = values[1][2]
 
+        ## Clip the Maximum and minim values for the height of the arm to avoid collision or weird movement.
+
         if x > 0:
             x_new,y_new,z_new = camera_to_base([x,y,z],right_R,right_t) 
             trajectory = np.array([
                 [x_new, -0.07, z_new, 0, 0, 0, 100],
-                [x_new, y_new-0.01, z_new, 0, 0, 0, 0],
+                [x_new, y_new+0.003, z_new, 0, 0, 0, 0],
                 [x_new, -0.07, z_new, 0, 0, 0, 0],
-            ]).ravel()
-
+            ]).ravel() 
             node.send_output(
                 "action_r_arm",
                 pa.array(trajectory),
                 metadata={"encoding": "xyzrpy", "duration": "0.5","arm":"right"},
             )
-            event, cache = wait_for_event(id="response_r_arm", timeout=15, cache=cache)
+            event, cache = wait_for_event(id="response_r_arm", timeout=12, cache=cache)
             if event is not None and event[0].as_py():
                 print("Success")
-                arm_holding_object ="right"
+                arm_holding_object = "right"
                 break
             else:
-                print("Failed: x: ", x, " y: ", y, " z: ", z)
+                print("Failed: x: ", x_new, " y: ", y_new, " z: ", z_new)
                 node.send_output(
                     "action_r_arm",
                     pa.array(r_init_pose),
-                    metadata={"encoding": "jointstate", "duration": "1.3","arm":"right"},
+                    metadata={"encoding": "jointstate", "duration": "0.75","arm":"right"},
                 )
                 event, cache = wait_for_event(id="response_r_arm", cache=cache)
         else:
             x_new,y_new,z_new = camera_to_base([x,y,z],left_R,left_t)
             trajectory = np.array([
                 [x_new, 0.05, z_new, 0, 0, 0, 100],
-                [x_new, y_new, z_new, 0, 0, 0, 0],
+                [x_new, y_new+0.008, z_new, 0, 0, 0, 0],
                 [x_new, 0.05, z_new, 0, 0, 0, 0],
-        ]).ravel()
-            
+            ]).ravel()
             node.send_output(
                 "action_l_arm",
                 pa.array(trajectory),
                 metadata={"encoding": "xyzrpy", "duration": "0.5","arm":"left"},
             )
-            event, cache = wait_for_event(id="response_l_arm", timeout=15, cache=cache)
-
+            event, cache = wait_for_event(id="response_l_arm", timeout=12, cache=cache)
             if event is not None and event[0].as_py():
                 print("Success")
                 arm_holding_object = "left"
                 break
             else:
-                print("Failed: x: ", x, " y: ", y, " z: ", z)
+                print("Failed: x: ", x_new, " y: ", y_new, " z: ", z_new)
                 node.send_output(
                     "action_l_arm",
                     pa.array(l_init_pose),
-                    metadata={"encoding": "jointstate", "duration": "1.3","arm":"left"},
+                    metadata={"encoding": "jointstate", "duration": "0.75","arm":"left"},
                 )
                 event, cache = wait_for_event(id="response_l_arm", cache=cache)
+    ### === RELEASING ===
 
+    # Trigger action once r_arm is done moving
+    # node.send_output("action_base", pa.array([0.0, 0.0, 0.0, 0.0, 0.0, -1.57]))
+    # event = wait_for_event(id="response_base")[0].as_py()
 
-    if arm_holding_object =="right":
-        dext_x_new,dext_y_new,dext_z_new = camera_to_base([dest_x,dest_y,dest_z],right_R,right_t)
+    # if not event:
+    #    print("Failed to move right")
+
+    # Trigger action to release object
+    if arm_holding_object == "right":
+        dest_x_new,dest_y_new,dest_z_new = camera_to_base([dest_x,dest_y,dest_z],right_R,right_t)
         node.send_output(
             "action_r_arm",
             pa.array(
                 [
-                    dext_x_new,
-                    -0.08,
-                    dext_z_new,
+                    dest_x_new,
+                    -0.008,
+                    dest_z_new,
                     0,
                     0,
                     0,
                     100,
                 ],
             ),
-            metadata={"encoding": "xyzrpy", "duration": "0.75","arm":"right"},
+           metadata={"encoding": "xyzrpy", "duration": "0.75","arm":"right"},
         )
         event, cache = wait_for_event(id="response_r_arm", cache=cache)
     else:
-        dext_x_new,dext_y_new,dext_z_new = camera_to_base([dest_x,dest_y,dest_z],left_R,left_t)
-        print("dext_x_new: ", dext_x_new, " dext_y_new: ", dext_y_new, " dext_z_new: ", dext_z_new)
-        print("左臂需要放置的点：")
+        dest_x_new,dest_y_new,dest_z_new = camera_to_base([dest_x,dest_y,dest_z],left_R,left_t)
         node.send_output(
-            "action_r_arm",
+            "action_l_arm",
             pa.array(
                 [
-                    dext_x_new,
-                    0.12,
-                    dext_z_new,
+                    dest_x_new,
+                    0.16,
+                    dest_z_new,
                     0,
                     0,
                     0,
@@ -331,7 +389,7 @@ while True:
                         100,
                     ],
                 ),
-                metadata={"encoding": "xyzrpy", "duration": "0.75","arm":"right"},
+               metadata={"encoding": "xyzrpy", "duration": "0.75","arm":"right"},
             )
             event, cache = wait_for_event(id="response_r_arm", cache=cache)
         else:
@@ -353,5 +411,7 @@ while True:
             event, cache = wait_for_event(id="response_l_arm", cache=cache)
     else:
         stop = True
+
     if cache.get("finished", False):
         break
+    # Move object back to initial position
